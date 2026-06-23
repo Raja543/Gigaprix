@@ -1,0 +1,58 @@
+{
+  "name": "gigaprix",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "prisma generate && next build",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "prisma db seed",
+    "db:clear-demo": "tsx prisma/clear-demo.ts",
+    "db:studio": "prisma studio"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@abstract-foundation/agw-client": "^1.12.3",
+    "@abstract-foundation/agw-react": "^1.13.0",
+    "@prisma/client": "^6.19.3",
+    "@privy-io/react-auth": "^3.31.0",
+    "@tanstack/react-query": "^5.101.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.4.0",
+    "framer-motion": "^12.40.0",
+    "lucide-react": "^1.18.0",
+    "next": "16.2.9",
+    "prisma": "^6.19.3",
+    "pusher-js": "^8.5.0",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "secp256k1": "^5.0.1",
+    "server-only": "^0.0.1",
+    "tailwind-merge": "^3.6.0",
+    "viem": "^2.52.2",
+    "wagmi": "^2.19.5",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.9",
+    "tailwindcss": "^4",
+    "tsx": "^4.22.4",
+    "typescript": "^5",
+    "vitest": "^2.1.9"
+  }
+}

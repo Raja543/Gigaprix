@@ -1,0 +1,319 @@
+@import "tailwindcss";
+
+/* ───────────────────────────────────────────────────────────
+   GigaPrix - Design System (Tailwind v4)
+   Calm dark theme: restrained accents, solid surfaces, soft borders.
+   ─────────────────────────────────────────────────────────── */
+
+@theme {
+  /* Abstract Overdrive: neon-emerald "fuel", laser-cyan "speed", deep void. */
+  --color-primary: #19f7a4; /* neon emerald - go/live/qualify */
+  --color-primary-dim: #0fd98c;
+  --color-accent: #22d3ee; /* laser cyan - data/telemetry/stats */
+  --color-accent-dim: #06b6d4;
+  --color-fuchsia: #38bdf8; /* sky - gradient/glow partner */
+  --color-danger: #ff4d6d;
+  --color-warning: #fbbf24;
+  --color-gold: #fbbf24;
+
+  /* Surfaces (deep void blue-gray) */
+  --color-bg: #06070d;
+  --color-bg-soft: #0b0d14;
+  --color-surface: #0f111a;
+  --color-surface-2: #161a24;
+  --color-border: #20283a;
+
+  /* Text */
+  --color-text: #eef2f8;
+  --color-text-muted: #9aa6bd;
+  --color-text-dim: #5d6680;
+
+  --radius: 0.75rem;
+
+  /* Fonts (wired in layout.tsx) */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, "JetBrains Mono", monospace;
+
+  /* Animations */
+  --animate-pulse-live: pulse-live 1.6s ease-in-out infinite;
+  --animate-slide-in: slide-in 0.35s ease-out both;
+  --animate-bracket-advance: bracket-advance 0.45s ease-out both;
+}
+
+@keyframes pulse-live {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.82); }
+}
+
+@keyframes slide-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes bracket-advance {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Base ───────────────────────────────────────────────── */
+
+* {
+  border-color: var(--color-border);
+}
+
+html {
+  color-scheme: dark;
+}
+
+/* Tight, modern headings. */
+h1,
+h2 {
+  letter-spacing: -0.02em;
+}
+
+/* Visible keyboard focus for accessibility (mouse clicks stay clean). */
+a:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-accent) 80%, transparent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Depth: emerald/blue/violet glows + a faint grid lattice behind everything. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      62rem 42rem at 12% -8%,
+      color-mix(in srgb, var(--color-primary) 16%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(
+      58rem 40rem at 92% -4%,
+      color-mix(in srgb, var(--color-accent) 14%, transparent),
+      transparent 58%
+    ),
+    radial-gradient(
+      70rem 50rem at 50% 115%,
+      color-mix(in srgb, var(--color-fuchsia) 10%, transparent),
+      transparent 60%
+    );
+}
+
+/* Scrolling telemetry grid lattice. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: -46px;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.55;
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--color-border) 60%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--color-border) 60%, transparent) 1px, transparent 1px);
+  background-size: 46px 46px;
+  -webkit-mask-image: radial-gradient(70rem 52rem at 50% -8%, #000 0%, transparent 72%);
+  mask-image: radial-gradient(70rem 52rem at 50% -8%, #000 0%, transparent 72%);
+  animation: grid-scroll 9s linear infinite;
+}
+
+@keyframes grid-scroll {
+  from { transform: translateY(0); }
+  to { transform: translateY(46px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::after { animation: none; }
+}
+
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-surface-2); }
+
+/* ── Component helpers ──────────────────────────────────── */
+
+@layer components {
+  /* Solid card surface (replaces heavy glassmorphism). */
+  .glass {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  }
+
+  .glass-hover {
+    transition: border-color 0.18s ease, background 0.18s ease,
+      transform 0.18s ease, box-shadow 0.18s ease;
+  }
+  .glass-hover:hover {
+    transform: translateY(-3px);
+    border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-border));
+    background: var(--color-surface-2);
+    box-shadow: 0 10px 30px -12px color-mix(in srgb, var(--color-primary) 30%, transparent);
+  }
+
+  .neon-text {
+    background: linear-gradient(
+      100deg,
+      var(--color-primary),
+      var(--color-fuchsia)
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Gradient heading text. */
+  .text-gradient {
+    background: linear-gradient(100deg, var(--color-text), var(--color-text-muted));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+
+  .accent-text {
+    color: var(--color-accent);
+  }
+
+  /* Asymmetric clipped corner - "racing chassis" silhouette. */
+  .clip-chassis {
+    clip-path: polygon(
+      0 0,
+      100% 0,
+      100% calc(100% - 14px),
+      calc(100% - 14px) 100%,
+      0 100%
+    );
+  }
+
+  /* Neon edge that lifts on hover - premium Web3 card depth. */
+  .neon-edge {
+    position: relative;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+  }
+  .neon-edge::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      130deg,
+      color-mix(in srgb, var(--color-primary) 60%, transparent),
+      transparent 45%,
+      color-mix(in srgb, var(--color-accent) 55%, transparent)
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0.45;
+    pointer-events: none;
+    transition: opacity 0.18s ease;
+  }
+  .neon-edge:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 16px 40px -18px color-mix(in srgb, var(--color-primary) 55%, transparent);
+  }
+  .neon-edge:hover::after {
+    opacity: 1;
+  }
+
+  /* Seamless marquee ticker (duplicate the track for the loop). */
+  .marquee-track {
+    display: inline-flex;
+    white-space: nowrap;
+    animation: marquee 32s linear infinite;
+  }
+  .marquee-track:hover {
+    animation-play-state: paused;
+  }
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+
+  /* Flowing "paddock line" connector between bracket stages. */
+  .paddock-line {
+    background-image: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--color-primary) 70%, transparent),
+      transparent
+    );
+    background-size: 200% 100%;
+    animation: paddock-flow 2.2s linear infinite;
+  }
+  @keyframes paddock-flow {
+    from { background-position: 200% 0; }
+    to { background-position: -200% 0; }
+  }
+
+  /* Soft colored glow behind hero / highlight elements. */
+  .glow-primary {
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 30%, transparent),
+      0 18px 60px -20px color-mix(in srgb, var(--color-primary) 55%, transparent);
+  }
+  .glow-gold {
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-gold) 35%, transparent),
+      0 18px 60px -20px color-mix(in srgb, var(--color-gold) 50%, transparent);
+  }
+
+  /* Pill chip. */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: 9999px;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    padding: 0.25rem 0.625rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  /* Subtle gradient hairline border for hero/featured cards. */
+  .gradient-border {
+    position: relative;
+    background: var(--color-surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--color-border);
+  }
+  .gradient-border::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    padding: 1px;
+    border-radius: inherit;
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--color-primary) 55%, transparent),
+      color-mix(in srgb, var(--color-accent) 45%, transparent)
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  .stat-number {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+}

@@ -1,0 +1,252 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── Enums ──────────────────────────────────────────────
+
+enum TournamentFormat {
+  SINGLE_ELIMINATION // Rounds of heats; top N advance
+  ROUND_ROBIN // League of heats; points by finish position
+}
+
+/// Event type run by the Competition Engine.
+enum CompetitionType {
+  CHAMPIONSHIP // open multi-stage qualifier
+  CREATOR_CUP // creator-hosted cup
+  COMMUNITY_CUP // open community event
+  GUILD_CUP // guild-vs-guild (future)
+}
+
+/// Race distance preset for every heat in a competition.
+enum RaceType {
+  DASH // 500m
+  SPRINT // 1200m
+  MARATHON // 2400m
+  GRAND_PRIX // 3000m
+}
+
+enum TournamentStatus {
+  DRAFT
+  REGISTRATION
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum MatchStatus {
+  PENDING // Heat formed, waiting for a race to be linked
+  RACE_LINKED // raceId submitted, waiting for resolution
+  RACE_OPEN // On-chain race is OPEN
+  RACING // On-chain race is RESOLVING
+  COMPLETED // Resolved, finish positions recorded
+  CANCELLED // Race cancelled/expired on-chain
+  BYE // Single entrant auto-advances
+}
+
+// ─── Models ─────────────────────────────────────────────
+
+model User {
+  id            String   @id @default(cuid())
+  walletAddress String   @unique @map("wallet_address")
+  username      String?
+  avatar        String?
+  discord       String?
+  twitter       String?
+  bio           String?
+  elo           Int?
+  totalRaces    Int      @default(0) @map("total_races")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  hostedTournaments Tournament[]  @relation("TournamentHost")
+  participations    Participant[]
+  matchEntries      MatchEntry[]
+  matchesWon        Match[]       @relation("MatchWinner")
+  standings         Standing[]
+
+  @@map("users")
+}
+
+model Tournament {
+  id              String           @id @default(cuid())
+  name            String
+  description     String?
+  format          TournamentFormat @default(SINGLE_ELIMINATION)
+  competitionType CompetitionType  @default(CHAMPIONSHIP) @map("competition_type")
+  raceType        RaceType         @default(SPRINT) @map("race_type")
+  status          TournamentStatus @default(DRAFT)
+  maxParticipants Int              @map("max_participants")
+  currentRound    Int              @default(0) @map("current_round")
+  totalRounds     Int              @default(0) @map("total_rounds")
+
+  // Heat config
+  heatSize        Int   @default(8) @map("heat_size") // racers per heat (<= 8)
+  advanceCount    Int   @default(4) @map("advance_count") // default top N advance per heat
+  advancePerRound Int[] @default([]) @map("advance_per_round") // per-round overrides; [] = use advanceCount
+
+  // Host controls (off-chain)
+  testMode        Boolean  @default(false) @map("test_mode") // allow simulated heat results
+  whitelistEnabled Boolean @default(false) @map("whitelist_enabled")
+  maxPerWallet    Int      @default(1) @map("max_per_wallet") // entries a wallet may hold
+  coHosts         String[] @default([]) @map("co_hosts") // wallet addresses with manager rights
+
+  // Per-stage schedule (index = round-1); giglings can only race 2-3x/day.
+  stageDates DateTime[] @default([]) @map("stage_dates")
+
+  // Race config hints
+  trackLength Int    @default(0) @map("track_length")
+  itemsMode   Int    @default(0) @map("items_mode")
+  weatherMode Int?   @map("weather_mode")
+  factionMode Int?   @map("faction_mode")
+
+  // Creator branding
+  bannerUrl   String?  @map("banner_url")
+  accentColor String?  @map("accent_color")
+  isPublic    Boolean  @default(true) @map("is_public")
+
+  // Timing
+  registrationStart DateTime? @map("registration_start")
+  registrationEnd   DateTime? @map("registration_end")
+  startedAt         DateTime? @map("started_at")
+  completedAt       DateTime? @map("completed_at")
+
+  hostId     String  @map("host_id")
+  host       User    @relation("TournamentHost", fields: [hostId], references: [id])
+  championId String? @map("champion_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  participants Participant[]
+  matches      Match[]
+  standings    Standing[]
+  whitelist    WhitelistEntry[]
+
+  @@index([status])
+  @@index([hostId])
+  @@map("tournaments")
+}
+
+model WhitelistEntry {
+  id            String   @id @default(cuid())
+  tournamentId  String   @map("tournament_id")
+  walletAddress String   @map("wallet_address")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
+  @@unique([tournamentId, walletAddress])
+  @@map("whitelist_entries")
+}
+
+model Participant {
+  id           String   @id @default(cuid())
+  tournamentId String   @map("tournament_id")
+  userId       String   @map("user_id")
+  petId        BigInt?  @map("pet_id") // preferred gigling; final pet derived from race
+  seed         Int?
+  registeredAt DateTime @default(now()) @map("registered_at")
+  isEliminated Boolean  @default(false) @map("is_eliminated")
+
+  tournament   Tournament   @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id])
+  matchEntries MatchEntry[]
+
+  // A wallet may enter multiple distinct giglings (capped by maxPerWallet in
+  // app logic). A given gigling can only enter a tournament once.
+  @@unique([tournamentId, petId])
+  @@index([tournamentId, userId])
+  @@map("participants")
+}
+
+/// A heat: one on-chain race of up to `heatSize` racers.
+model Match {
+  id           String @id @default(cuid())
+  tournamentId String @map("tournament_id")
+
+  round       Int
+  position    Int
+  bracketPath String? @map("bracket_path")
+
+  heatSize     Int @default(8) @map("heat_size")
+  advanceCount Int @default(4) @map("advance_count")
+
+  // Linked on-chain race
+  raceId    BigInt? @map("race_id")
+  racePhase Int?    @map("race_phase")
+
+  // Result
+  winnerId     String? @map("winner_id") // 1st place
+  winnerPetId  BigInt? @map("winner_pet_id")
+  finalRanking Json?   @map("final_ranking") // full petId order from chain
+
+  status      MatchStatus @default(PENDING)
+  scheduledAt DateTime?   @map("scheduled_at")
+  completedAt DateTime?   @map("completed_at")
+  nextMatchId String?     @map("next_match_id") // optional feed target (next-round heat)
+
+  tournament      Tournament   @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  winner          User?        @relation("MatchWinner", fields: [winnerId], references: [id])
+  nextMatch       Match?       @relation("MatchAdvancement", fields: [nextMatchId], references: [id])
+  previousMatches Match[]      @relation("MatchAdvancement")
+  entries         MatchEntry[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([tournamentId, round, position])
+  @@index([raceId])
+  @@index([status])
+  @@map("matches")
+}
+
+/// A racer's slot in a heat. Up to `heatSize` per Match. Keyed by participant
+/// so a wallet entering multiple giglings is tracked distinctly.
+model MatchEntry {
+  id            String @id @default(cuid())
+  matchId       String @map("match_id")
+  participantId String @map("participant_id")
+  userId        String @map("user_id")
+
+  petId          BigInt? @map("pet_id") // the actual gigling raced
+  seed           Int?
+  finishPosition Int?    @map("finish_position") // 1 = winner
+  finishTime     BigInt? @map("finish_time") // ms
+  advanced       Boolean @default(false)
+
+  match       Match       @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  participant Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([matchId, participantId])
+  @@index([userId])
+  @@map("match_entries")
+}
+
+model Standing {
+  id            String @id @default(cuid())
+  tournamentId  String @map("tournament_id")
+  userId        String @map("user_id")
+  walletAddress String @map("wallet_address")
+
+  wins        Int     @default(0) // heat wins (1st place)
+  racesPlayed Int     @default(0) @map("races_played")
+  points      Int     @default(0) // position points
+  bestTime    BigInt? @map("best_time")
+  streak      Int     @default(0)
+  rank        Int?
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id])
+
+  @@unique([tournamentId, userId])
+  @@map("standings")
+}
