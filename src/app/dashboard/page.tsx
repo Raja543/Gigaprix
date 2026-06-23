@@ -10,6 +10,8 @@ import {
   Users,
   Flag,
   Trophy,
+  Radio,
+  CheckCircle2,
 } from "lucide-react";
 import { useWallet } from "@/hooks/useWallet";
 import { Button } from "@/components/ui/button";
@@ -82,12 +84,46 @@ export default function DashboardPage() {
           </Link>
         </Card>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {data.map((t) => (
-            <HostedCard key={t.id} tournament={t} viewer={address} />
-          ))}
-        </div>
+        <>
+          <HostAnalytics data={data} />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {data.map((t) => (
+              <HostedCard key={t.id} tournament={t} viewer={address} />
+            ))}
+          </div>
+        </>
       )}
+    </div>
+  );
+}
+
+function HostAnalytics({ data }: { data: UITournamentCard[] }) {
+  const live = data.filter((t) => t.status === "IN_PROGRESS").length;
+  const completed = data.filter((t) => t.status === "COMPLETED").length;
+  const racers = data.reduce((s, t) => s + t._count.participants, 0);
+  const champions = data.filter(
+    (t) => t.status === "COMPLETED" && t.championId
+  ).length;
+
+  const stats = [
+    { label: "Competitions", value: data.length, icon: <Trophy className="h-4 w-4 text-primary" /> },
+    { label: "Live now", value: live, icon: <Radio className="h-4 w-4 text-danger" /> },
+    { label: "Completed", value: completed, icon: <CheckCircle2 className="h-4 w-4 text-accent" /> },
+    { label: "Total racers", value: racers, icon: <Users className="h-4 w-4 text-warning" /> },
+    { label: "Champions crowned", value: champions, icon: <Flag className="h-4 w-4 text-gold" /> },
+  ];
+
+  return (
+    <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      {stats.map((s) => (
+        <Card key={s.label} className="flex flex-col gap-1.5 p-4">
+          {s.icon}
+          <div className="stat-number text-2xl font-bold">{s.value}</div>
+          <div className="text-[11px] uppercase tracking-wide text-text-muted">
+            {s.label}
+          </div>
+        </Card>
+      ))}
     </div>
   );
 }
