@@ -20,6 +20,11 @@ Set these in your host (e.g. Vercel → Project → Settings → Environment Var
 >   `postgresql://postgres.<ref>:<pwd>@aws-0-<region>.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1&sslmode=require`
 > - `DIRECT_URL` = **Session** mode, port **5432**:
 >   `postgresql://postgres.<ref>:<pwd>@aws-0-<region>.pooler.supabase.com:5432/postgres?sslmode=require`
+>
+> Find `<region>` and the exact pooler host on that same Supabase page (e.g.
+> `aws-0-ap-south-1.pooler.supabase.com`). URL-encode special characters in the
+> password (`@` → `%40`, `#` → `%23`, etc.). Do **not** use the
+> `db.<ref>.supabase.co` host — it's IPv6-only and Vercel can't reach it.
 | `NEXT_PUBLIC_ABSTRACT_RPC` | ✅ | `https://api.mainnet.abs.xyz` |
 | `NEXT_PUBLIC_PET_RACING_ADDRESS` | ✅ | Gigaverse PetRacingSystem address |
 | `GIGAVERSE_API_BASE` | ✅ | `https://gigaverse.io/api/racing` |
