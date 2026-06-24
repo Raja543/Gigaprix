@@ -31,11 +31,20 @@ npm run typecheck && npm run lint && npm run test && npm run build
 ```
 
 ## 4. Cron (auto-resolve linked races)
-- `vercel.json` registers `/api/cron/sync-races` every minute.
-- Vercel automatically sends `Authorization: Bearer $CRON_SECRET`, so just set
-  `CRON_SECRET` and the cron is protected.
-- Verify after deploy: link a race, let it resolve on-chain, and confirm the heat
-  advances within ~1 min without anyone clicking "Fetch result".
+The endpoint `/api/cron/sync-races` polls linked races and advances heats.
+
+- **Vercel Hobby plan caps crons at once/day**, so `vercel.json` runs a daily
+  safety-net sweep (`0 3 * * *`). Vercel auto-sends `Authorization: Bearer
+  $CRON_SECRET`, so just set `CRON_SECRET`.
+- **For near-real-time auto-resolution without Vercel Pro**, use the included
+  **GitHub Action** (`.github/workflows/sync-races.yml`, every ~5 min, free). Add
+  two repo secrets: `SYNC_URL` = `https://<your-app>.vercel.app/api/cron/sync-races`
+  and `CRON_SECRET` (same value as on Vercel). Or use a free service like
+  cron-job.org for 1-minute pings.
+- **Either way, the in-app "Fetch result" button resolves a heat instantly** — the
+  cron is just automation, not required for the app to work.
+- Verify: link a resolved race and confirm the heat advances (via the sweep, the
+  Action, or the button).
 
 ## 5. Wallet (Abstract Global Wallet)
 - Confirm wallet connect works on the **production domain** (AGW origin config).

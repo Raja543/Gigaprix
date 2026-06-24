@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/cron/sync-races",
-      "schedule": "* * * * *"
+      "schedule": "0 3 * * *"
     }
   ]
 }
