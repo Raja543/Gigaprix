@@ -9,7 +9,7 @@ import { TournamentCard } from "@/components/tournament/TournamentCard";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { LiveIndicator } from "@/components/shared/LiveIndicator";
-import { cn, displayName, formatNumber } from "@/lib/utils";
+import { displayName, formatNumber } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -80,7 +80,6 @@ async function getLandingData() {
 export default async function HomePage() {
   const { live, openReg, completed, champions, stats } = await getLandingData();
   const featured = live[0] ?? openReg[0] ?? null;
-  const ticker = [...live, ...openReg];
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6">
@@ -117,31 +116,6 @@ export default async function HomePage() {
             </Link>
           </div>
         </div>
-
-        {/* Live "grand prix" ticker */}
-        {ticker.length > 0 && (
-          <div className="relative mt-14 overflow-hidden border-y border-border/60 py-2.5">
-            <div className="marquee-track gap-8">
-              {[...ticker, ...ticker].map((t, i) => (
-                <span
-                  key={i}
-                  className="mx-5 inline-flex items-center gap-2 text-sm"
-                >
-                  <span
-                    className={cn(
-                      "h-1.5 w-1.5 rounded-full",
-                      t.status === "IN_PROGRESS" ? "bg-primary" : "bg-accent"
-                    )}
-                  />
-                  <span className="font-medium text-text">{t.name}</span>
-                  <span className="stat-number text-xs text-text-dim">
-                    {t._count.participants}/{t.maxParticipants}
-                  </span>
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
       </section>
 
       {/* Global stats */}
