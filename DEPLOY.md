@@ -5,26 +5,25 @@ Set these in your host (e.g. Vercel → Project → Settings → Environment Var
 
 | Var | Required | Notes |
 |-----|----------|-------|
-| `DATABASE_URL` | ✅ | Supabase **transaction pooler** (see critical note) |
-| `DIRECT_URL` | ✅ | Supabase **session pooler** (Prisma migrations/push) |
+| `DATABASE_URL` | ✅ | **Pooled** connection (runtime) — see critical note |
+| `DIRECT_URL` | ✅ | **Direct** connection (Prisma migrations/push) |
 
-> **CRITICAL for Vercel.** The Supabase *direct* host (`db.<ref>.supabase.co:5432`)
-> is **IPv6-only** and Vercel functions are IPv4-only, so it won't connect —
-> pages that read the DB error and writes (create competition) hang then fail.
-> Use the **Supavisor pooler** (IPv4) from Supabase → Settings → Database →
-> *Connection pooling*:
+> **CRITICAL for Vercel: use an IPv4-reachable Postgres.** Vercel functions are
+> IPv4-only. Supabase's *direct* host (`db.<ref>.supabase.co`) is **IPv6-only**,
+> so reads error and writes (create competition) hang then fail — and not every
+> Supabase project exposes the IPv4 Supavisor pooler. **Neon** (neon.tech) is
+> IPv4 by default and works out of the box:
 >
-> - `DATABASE_URL` = **Transaction** mode, port **6543**, and you MUST append
->   `?pgbouncer=true&connection_limit=1` (Prisma + pgbouncer requirement, else
->   writes fail with "prepared statement" errors):
->   `postgresql://postgres.<ref>:<pwd>@aws-0-<region>.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1&sslmode=require`
-> - `DIRECT_URL` = **Session** mode, port **5432**:
->   `postgresql://postgres.<ref>:<pwd>@aws-0-<region>.pooler.supabase.com:5432/postgres?sslmode=require`
+> - `DATABASE_URL` = the **pooled** string (host contains `-pooler`). Append
+>   `&pgbouncer=true&connection_limit=1` (Prisma + pgbouncer requirement):
+>   `postgresql://<user>:<pwd>@ep-xxxx-pooler.<region>.aws.neon.tech/neondb?sslmode=require&pgbouncer=true&connection_limit=1`
+> - `DIRECT_URL` = the **direct** string (no `-pooler`):
+>   `postgresql://<user>:<pwd>@ep-xxxx.<region>.aws.neon.tech/neondb?sslmode=require`
 >
-> Find `<region>` and the exact pooler host on that same Supabase page (e.g.
-> `aws-0-ap-south-1.pooler.supabase.com`). URL-encode special characters in the
-> password (`@` → `%40`, `#` → `%23`, etc.). Do **not** use the
-> `db.<ref>.supabase.co` host — it's IPv6-only and Vercel can't reach it.
+> Run `npm run db:push` once against the new DB to create the tables. If you stay
+> on Supabase, you must enable its IPv4 pooler and use the
+> `aws-N-<region>.pooler.supabase.com` host instead — the direct host won't work
+> on Vercel.
 | `NEXT_PUBLIC_ABSTRACT_RPC` | ✅ | `https://api.mainnet.abs.xyz` |
 | `NEXT_PUBLIC_PET_RACING_ADDRESS` | ✅ | Gigaverse PetRacingSystem address |
 | `GIGAVERSE_API_BASE` | ✅ | `https://gigaverse.io/api/racing` |
