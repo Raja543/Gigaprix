@@ -43,11 +43,21 @@ export async function createTournamentAction(
       error: `Too many competitions created. Try again in ${rl.retryAfter}s.`,
     };
   }
-  const host = await getOrCreateUser(caller);
-  const tournament = await createTournamentEngine({ ...config, hostId: host.id });
 
-  revalidatePath("/tournaments");
-  return { ok: true, data: { id: tournament.id } };
+  try {
+    const host = await getOrCreateUser(caller);
+    const tournament = await createTournamentEngine({ ...config, hostId: host.id });
+    revalidatePath("/tournaments");
+    revalidatePath("/dashboard");
+    return { ok: true, data: { id: tournament.id } };
+  } catch (err) {
+    captureError(err, { action: "createTournament", caller });
+    const detail = err instanceof Error ? err.message.split("\n")[0] : "";
+    return {
+      ok: false,
+      error: `Could not create the competition${detail ? ` (${detail})` : ""}. Check your database connection.`,
+    };
+  }
 }
 
 export async function joinTournamentAction(

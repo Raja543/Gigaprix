@@ -17,6 +17,7 @@ import {
   type RaceType,
 } from "@/lib/competition";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/components/ui/toast";
 
 const STEPS = ["Basics", "Config", "Review"];
 
@@ -30,6 +31,7 @@ function parseAdvancePerRound(text: string): number[] {
 
 export function TournamentBuilder() {
   const router = useRouter();
+  const { toast } = useToast();
   const { address, isConnected, connect } = useWallet();
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
@@ -93,27 +95,37 @@ export function TournamentBuilder() {
     }
     setSubmitting(true);
     setError(null);
-    const res = await createTournamentAction({
-      name: form.name,
-      description: form.description || null,
-      format: form.format,
-      competitionType: form.isPublic ? "CHAMPIONSHIP" : "CREATOR_CUP",
-      raceType: form.raceType,
-      maxParticipants: form.maxParticipants,
-      heatSize: form.heatSize,
-      advanceCount: form.advanceCount,
-      advancePerRound: parseAdvancePerRound(form.advancePerRound),
-      accentColor: form.accentColor,
-      isPublic: form.isPublic,
-      testMode: form.testMode,
-      whitelistEnabled: form.whitelistEnabled,
-      hostAddress: address,
-    });
-    setSubmitting(false);
-    if (res.ok) {
-      router.push(`/tournaments/${res.data.id}`);
-    } else {
-      setError(res.error);
+    try {
+      const res = await createTournamentAction({
+        name: form.name,
+        description: form.description || null,
+        format: form.format,
+        competitionType: form.isPublic ? "CHAMPIONSHIP" : "CREATOR_CUP",
+        raceType: form.raceType,
+        maxParticipants: form.maxParticipants,
+        heatSize: form.heatSize,
+        advanceCount: form.advanceCount,
+        advancePerRound: parseAdvancePerRound(form.advancePerRound),
+        accentColor: form.accentColor,
+        isPublic: form.isPublic,
+        testMode: form.testMode,
+        whitelistEnabled: form.whitelistEnabled,
+        hostAddress: address,
+      });
+      if (res.ok) {
+        toast("Competition created!", "success");
+        router.push(`/tournaments/${res.data.id}`);
+      } else {
+        setError(res.error);
+        toast(res.error, "error");
+      }
+    } catch (e) {
+      const msg =
+        e instanceof Error ? e.message.split("\n")[0] : "Failed to create competition";
+      setError(msg);
+      toast(msg, "error");
+    } finally {
+      setSubmitting(false);
     }
   }
 
