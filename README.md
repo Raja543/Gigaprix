@@ -56,10 +56,59 @@ the bracket / standings.
 
 - **Next.js 16** (App Router, RSC) · React 19 · TypeScript
 - **Tailwind v4** (CSS theme in `src/app/globals.css`)
-- **Prisma 6** · **Supabase** PostgreSQL
+- **Prisma 6** · **PostgreSQL** (Neon in prod — IPv4, Vercel-friendly)
 - **viem** (Abstract reads + signature verification) · **wagmi** +
   **Abstract Global Wallet** · **pusher-js** (GigaSocket lobby)
 - **TanStack Query** · **zod** · **Vitest**
+
+---
+
+## Gigaverse integration
+
+GigaPrix doesn't own any race data — it reads everything from Gigaverse over two
+channels and stores only the tournament structure (who's in which heat) itself.
+
+### 1. Gigaverse REST API
+
+Base URL: `GIGAVERSE_API_BASE` (default `https://gigaverse.io/api/racing`). All
+calls live in **`src/lib/gigaverse/api.ts`**, go through one `apiFetch` helper
+(6s timeout, 1 retry), and fall back to mock data when
+`NEXT_PUBLIC_USE_MOCK_GIGAVERSE="true"`.
+
+| Function | Endpoint | Used by | Purpose |
+|----------|----------|---------|---------|
+| `fetchGlobalStats` | `GET /stats` | landing (`app/page.tsx`) | Hero stat cards (total races, entries, racers, resolved) |
+| `fetchGiglingsByIds` | `GET /pets?ids=…` | tournament + standings + match pages, `api/giglings` | Batch-enrich entrants: name, image, rarity, faction, ELO, record |
+| `fetchPlayerGiglings` | `GET /races/{address}` → `GET /pets?ids=…` | profile page, `api/giglings/[address]`, `lib/users.ts` (ELO sync) | A wallet's racing pets, derived from races it entered |
+| `fetchWalletRaces` | `GET /races` + `GET /races/{address}` | `actions/match.ts` (`detectLatestRaceAction`) | Auto-detect the race a host just created on Gigaverse so it can be linked to a heat |
+| `fetchPetStats` | `GET /pets/{id}/stats` | (helper) | Per-pet race count / wins / recent finishes |
+| `fetchPlayerRaces` | `GET /races/{address}` | (helper) | Recent races for a wallet |
+| `fetchEloLeaderboard` | `GET /leaderboard/elo` | (helper) | ELO leaderboard |
+| `fetchRace` | `GET /race/{id}` | (helper) | Single race lookup |
+
+### 2. On-chain reads (PetRacingSystem contract)
+
+Result **resolution** is read straight from the contract on Abstract
+(chainId 2741) via **viem**, not the REST API — it's the source of truth for
+finishing order. Address = `NEXT_PUBLIC_PET_RACING_ADDRESS`, RPC =
+`NEXT_PUBLIC_ABSTRACT_RPC`. Helpers in **`src/lib/gigaverse/contracts.ts`**:
+
+| Read | Contract fn | Used by | Purpose |
+|------|-------------|---------|---------|
+| `getRacePhase` | `getRacePhase` | `lib/race/link-service.ts`, `api/cron/sync-races` | Is the linked race resolved yet? (phase 3 = done) |
+| `getRacePets` | `getRacePets` | `lib/race/result-processor.ts` | Which pets ran |
+| `getRaceFinalRanking` | `getRaceFinalRanking` | `lib/race/result-processor.ts` | Finishing order → who advances |
+| `getRaceFinishTimes` | `getRaceFinishTimes` | `lib/race/result-processor.ts` | Finish times for telemetry/standings |
+
+When a heat's linked race reaches phase 3, the cron (or the in-app **Fetch
+result** button) reads the ranking on-chain, advances qualifiers, and updates
+standings.
+
+### 3. Wallet signature verification
+
+SIWE sign-in (`api/auth/verify`) verifies the wallet signature with viem's
+`publicClient.verifyMessage`, which supports EIP-1271/6492 smart accounts (so
+Abstract Global Wallet works, not just EOAs).
 
 ---
 
