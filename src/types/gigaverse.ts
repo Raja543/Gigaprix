@@ -25,21 +25,6 @@ export const RACE_PHASE_LABEL: Record<RacePhase, string> = {
   [RacePhase.CANCELLED]: "Cancelled",
 };
 
-/** Decoded `getRace(raceId)` struct (Race in RaceTypes.sol). */
-export interface Race {
-  raceId: bigint;
-  phase: RacePhase;
-  raceStart: bigint;
-  raceFinish: bigint;
-  entryFee: bigint;
-  pool: bigint;
-  fieldSize: number;
-  petCount: number;
-  trackLength: number;
-  creator: `0x${string}`;
-  isPrivate: boolean;
-}
-
 /** Result of a resolved race. */
 export interface RaceResult {
   raceId: bigint;

@@ -59,22 +59,11 @@ export function formatLabel(value: CompetitionFormat | string): string {
   return FORMAT_LABEL[value as CompetitionFormat] ?? "Knockout";
 }
 
-/** Recommended starting setup a category applies (all still editable). */
-export interface CompetitionDefaults {
-  format: CompetitionFormat;
-  whitelistEnabled: boolean;
-  maxParticipants: number;
-}
-
 export interface CompetitionMeta {
   value: CompetitionType;
   label: string;
   tagline: string;
   desc: string;
-  /** Smart defaults applied when this category is chosen. */
-  defaults: CompetitionDefaults;
-  /** What the defaults mean, shown as a hint in the builder. */
-  defaultsNote: string;
   /** Guild Cup is reserved for a future release. */
   available: boolean;
 }
@@ -85,8 +74,6 @@ export const COMPETITION_TYPES: CompetitionMeta[] = [
     label: "Championship",
     tagline: "Open qualifier",
     desc: "Open multi-stage championship - the field qualifies down to one champion.",
-    defaults: { format: "SINGLE_ELIMINATION", whitelistEnabled: false, maxParticipants: 32 },
-    defaultsNote: "Open knockout · 32 racers · anyone can join",
     available: true,
   },
   {
@@ -94,8 +81,6 @@ export const COMPETITION_TYPES: CompetitionMeta[] = [
     label: "Creator Cup",
     tagline: "Creator hosted",
     desc: "A cup hosted by a creator for their audience, with their own rules & branding.",
-    defaults: { format: "SINGLE_ELIMINATION", whitelistEnabled: true, maxParticipants: 16 },
-    defaultsNote: "Knockout · 16 racers · whitelist on (you pick who's in)",
     available: true,
   },
   {
@@ -103,8 +88,6 @@ export const COMPETITION_TYPES: CompetitionMeta[] = [
     label: "Community Cup",
     tagline: "Community run",
     desc: "An open community event anyone can enter and help run.",
-    defaults: { format: "ROUND_ROBIN", whitelistEnabled: false, maxParticipants: 24 },
-    defaultsNote: "League · 24 racers · open to all, ranked by points",
     available: true,
   },
   {
@@ -112,8 +95,6 @@ export const COMPETITION_TYPES: CompetitionMeta[] = [
     label: "Guild Cup",
     tagline: "Coming soon",
     desc: "Guild-versus-guild competition with team scoring. Coming in a future release.",
-    defaults: { format: "SINGLE_ELIMINATION", whitelistEnabled: true, maxParticipants: 16 },
-    defaultsNote: "Team vs team · coming with unlimited racing",
     available: false,
   },
 ];

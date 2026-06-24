@@ -7,30 +7,6 @@ export const PET_RACING_ABI = [
   // ─── Reads ──────────────────────────────────────────────
   {
     type: "function",
-    name: "getRace",
-    stateMutability: "view",
-    inputs: [{ name: "raceId", type: "uint256" }],
-    outputs: [
-      {
-        name: "",
-        type: "tuple",
-        components: [
-          { name: "phase", type: "uint8" },
-          { name: "raceStart", type: "uint256" },
-          { name: "raceFinish", type: "uint256" },
-          { name: "entryFee", type: "uint256" },
-          { name: "pool", type: "uint256" },
-          { name: "fieldSize", type: "uint256" },
-          { name: "petCount", type: "uint256" },
-          { name: "trackLength", type: "uint256" },
-          { name: "creator", type: "address" },
-          { name: "isPrivate", type: "bool" },
-        ],
-      },
-    ],
-  },
-  {
-    type: "function",
     name: "getRacePhase",
     stateMutability: "view",
     inputs: [{ name: "raceId", type: "uint256" }],

@@ -1,54 +1,14 @@
 import { publicClient } from "./client";
 import { PET_RACING_ABI, PET_RACING_ADDRESS } from "./abi";
-import { RacePhase, type Race } from "@/types/gigaverse";
+import { RacePhase } from "@/types/gigaverse";
 
 export { PET_RACING_ABI, PET_RACING_ADDRESS };
 
 const abi = PET_RACING_ABI;
 
 // ─── Read helpers (Gigaverse race contract) ──
-
-/**
- * NOTE: the live PetRacingSystem `getRace` struct does NOT match this ABI (the
- * real tuple has fewer fields), so this call reverts on decode. Use
- * `getRacePhase` for status and the typed array reads below for results. Kept
- * only for reference; do not use until the struct shape is verified on-chain.
- */
-export async function getRace(
-  raceId: bigint,
-  address: `0x${string}` = PET_RACING_ADDRESS
-): Promise<Race> {
-  const r = (await publicClient.readContract({
-    address,
-    abi,
-    functionName: "getRace",
-    args: [raceId],
-  })) as {
-    phase: number;
-    raceStart: bigint;
-    raceFinish: bigint;
-    entryFee: bigint;
-    pool: bigint;
-    fieldSize: bigint;
-    petCount: bigint;
-    trackLength: bigint;
-    creator: `0x${string}`;
-    isPrivate: boolean;
-  };
-  return {
-    raceId,
-    phase: r.phase as RacePhase,
-    raceStart: r.raceStart,
-    raceFinish: r.raceFinish,
-    entryFee: r.entryFee,
-    pool: r.pool,
-    fieldSize: Number(r.fieldSize),
-    petCount: Number(r.petCount),
-    trackLength: Number(r.trackLength),
-    creator: r.creator,
-    isPrivate: r.isPrivate,
-  };
-}
+// Status is read via getRacePhase and results via the typed array reads below;
+// the contract's getRace struct shape isn't relied on.
 
 export async function getRacePhase(
   raceId: bigint,

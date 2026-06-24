@@ -81,5 +81,3 @@ export function captureError(error: unknown, context?: Record<string, unknown>) 
   console.error("[capture]", error, context ?? "");
   if (DSN) void sendToSentry(error, context);
 }
-
-export const monitoringEnabled = !!DSN;
