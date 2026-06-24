@@ -24,9 +24,9 @@ Set these in your host (e.g. Vercel → Project → Settings → Environment Var
 > on Supabase, you must enable its IPv4 pooler and use the
 > `aws-N-<region>.pooler.supabase.com` host instead — the direct host won't work
 > on Vercel.
-| `NEXT_PUBLIC_ABSTRACT_RPC` | ✅ | `https://api.mainnet.abs.xyz` |
-| `NEXT_PUBLIC_PET_RACING_ADDRESS` | ✅ | Gigaverse PetRacingSystem address |
-| `GIGAVERSE_API_BASE` | ✅ | `https://gigaverse.io/api/racing` |
+| `NEXT_PUBLIC_ABSTRACT_RPC` | ✅ | `https://api.mainnet.abs.xyz` — RPC for on-chain race-result reads (see Gigaverse note) |
+| `NEXT_PUBLIC_PET_RACING_ADDRESS` | ✅ | Gigaverse PetRacingSystem address — contract read for race phase/ranking |
+| `GIGAVERSE_API_BASE` | ✅ | `https://gigaverse.io/api/racing` — REST base for pets/races/stats |
 | `AUTH_SECRET` | ✅ | Long random string. Signs wallet session cookies — **required in prod**. Rotating it logs everyone out. |
 | `CRON_SECRET` | ✅ | Long random string. **Required in prod** — the cron refuses to run unprotected. |
 | `NEXT_PUBLIC_PUSHER_KEY` / `_CLUSTER` | optional | Live lobby updates |
@@ -34,13 +34,22 @@ Set these in your host (e.g. Vercel → Project → Settings → Environment Var
 | `NEXT_PUBLIC_SENTRY_DSN` | optional | Enables remote error reporting |
 | `NEXT_PUBLIC_USE_MOCK_GIGAVERSE` | optional | `"true"` only for demos without the live API |
 
+> **Gigaverse dependency.** GigaPrix reads all race data from Gigaverse — the
+> REST API (`GIGAVERSE_API_BASE`: pets/races/stats) and the PetRacingSystem
+> contract on Abstract (`NEXT_PUBLIC_ABSTRACT_RPC` +
+> `NEXT_PUBLIC_PET_RACING_ADDRESS`: race phase + final ranking for result
+> resolution). All three must point at **mainnet** in prod. If Gigaverse's API is
+> down, enrichment/auto-detect degrade gracefully, but **result resolution needs
+> the RPC + contract** to advance heats. See the *Gigaverse integration* section
+> in the README for the exact endpoints and which code uses each.
+
 ## 2. Database
 ```bash
 npm run db:push        # sync schema to the prod DB (first deploy)
 # Do NOT run db:seed in prod — it loads demo data (guarded behind SEED_RESET).
 ```
-- Confirm **Supabase backups / Point-in-Time Recovery** are enabled. (A bad reset
-  is otherwise unrecoverable.)
+- Confirm **DB backups / Point-in-Time Recovery** are enabled (Neon, Supabase, or
+  whichever host). A bad reset is otherwise unrecoverable.
 
 ## 3. Build
 ```bash
