@@ -38,7 +38,8 @@ export default async function TournamentsPage({
       ? { participants: { _count: "desc" } }
       : { createdAt: "desc" };
 
-  const [rows, total] = await Promise.all([
+  // Degrade to an empty list rather than a crash if the DB is unreachable.
+  const result = await Promise.all([
     prisma.tournament.findMany({
       where,
       orderBy,
@@ -50,9 +51,10 @@ export default async function TournamentsPage({
       },
     }),
     prisma.tournament.count({ where }),
-  ]);
+  ]).catch(() => null);
 
-  const tournaments = serializeTournamentCards(rows);
+  const total = result?.[1] ?? 0;
+  const tournaments = serializeTournamentCards(result?.[0] ?? []);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   function pageHref(p: number) {

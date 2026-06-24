@@ -3,6 +3,7 @@ import { Trophy, Zap, Users, Flag, ArrowRight, Radio } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { fetchGlobalStats } from "@/lib/gigaverse/api";
 import { serializeTournamentCards } from "@/lib/serialize";
+import { captureError } from "@/lib/monitoring";
 import { formatLabel } from "@/lib/competition";
 import { TournamentCard } from "@/components/tournament/TournamentCard";
 import { Button } from "@/components/ui/button";
@@ -18,50 +19,62 @@ async function getLandingData() {
     _count: { select: { participants: true, matches: true } },
   } as const;
 
-  const [live, openReg, completed, champions, stats] = await Promise.all([
-    prisma.tournament.findMany({
-      where: { status: "IN_PROGRESS", isPublic: true },
-      include: cardInclude,
-      orderBy: { startedAt: "desc" },
-      take: 6,
-    }),
-    prisma.tournament.findMany({
-      where: { status: "REGISTRATION", isPublic: true },
-      include: cardInclude,
-      orderBy: { createdAt: "desc" },
-      take: 6,
-    }),
-    prisma.tournament.findMany({
-      where: { status: "COMPLETED", isPublic: true },
-      include: cardInclude,
-      orderBy: { completedAt: "desc" },
-      take: 6,
-    }),
-    prisma.tournament.findMany({
-      where: { status: "COMPLETED", championId: { not: null } },
-      include: { host: true },
-      orderBy: { completedAt: "desc" },
-      take: 4,
-    }),
-    fetchGlobalStats().catch(() => null),
-  ]);
+  // Never let the homepage crash on a transient DB/API issue - degrade to empty.
+  try {
+    const [live, openReg, completed, champions, stats] = await Promise.all([
+      prisma.tournament.findMany({
+        where: { status: "IN_PROGRESS", isPublic: true },
+        include: cardInclude,
+        orderBy: { startedAt: "desc" },
+        take: 6,
+      }),
+      prisma.tournament.findMany({
+        where: { status: "REGISTRATION", isPublic: true },
+        include: cardInclude,
+        orderBy: { createdAt: "desc" },
+        take: 6,
+      }),
+      prisma.tournament.findMany({
+        where: { status: "COMPLETED", isPublic: true },
+        include: cardInclude,
+        orderBy: { completedAt: "desc" },
+        take: 6,
+      }),
+      prisma.tournament.findMany({
+        where: { status: "COMPLETED", championId: { not: null } },
+        include: { host: true },
+        orderBy: { completedAt: "desc" },
+        take: 4,
+      }),
+      fetchGlobalStats().catch(() => null),
+    ]);
 
-  const championUsers = await prisma.user.findMany({
-    where: { id: { in: champions.map((c) => c.championId!).filter(Boolean) } },
-  });
-  const userById = new Map(championUsers.map((u) => [u.id, u]));
+    const championUsers = await prisma.user.findMany({
+      where: { id: { in: champions.map((c) => c.championId!).filter(Boolean) } },
+    });
+    const userById = new Map(championUsers.map((u) => [u.id, u]));
 
-  return {
-    live: serializeTournamentCards(live),
-    openReg: serializeTournamentCards(openReg),
-    completed: serializeTournamentCards(completed),
-    champions: champions.map((c) => ({
-      id: c.id,
-      name: c.name,
-      champion: c.championId ? userById.get(c.championId) ?? null : null,
-    })),
-    stats,
-  };
+    return {
+      live: serializeTournamentCards(live),
+      openReg: serializeTournamentCards(openReg),
+      completed: serializeTournamentCards(completed),
+      champions: champions.map((c) => ({
+        id: c.id,
+        name: c.name,
+        champion: c.championId ? userById.get(c.championId) ?? null : null,
+      })),
+      stats,
+    };
+  } catch (err) {
+    captureError(err, { page: "landing", reason: "getLandingData failed" });
+    return {
+      live: [],
+      openReg: [],
+      completed: [],
+      champions: [] as { id: string; name: string; champion: null }[],
+      stats: null,
+    };
+  }
 }
 
 export default async function HomePage() {
