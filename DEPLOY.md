@@ -5,8 +5,21 @@ Set these in your host (e.g. Vercel → Project → Settings → Environment Var
 
 | Var | Required | Notes |
 |-----|----------|-------|
-| `DATABASE_URL` | ✅ | Supabase pooled connection string |
-| `DIRECT_URL` | ✅ | Direct connection (Prisma migrations/push) |
+| `DATABASE_URL` | ✅ | Supabase **transaction pooler** (see critical note) |
+| `DIRECT_URL` | ✅ | Supabase **session pooler** (Prisma migrations/push) |
+
+> **CRITICAL for Vercel.** The Supabase *direct* host (`db.<ref>.supabase.co:5432`)
+> is **IPv6-only** and Vercel functions are IPv4-only, so it won't connect —
+> pages that read the DB error and writes (create competition) hang then fail.
+> Use the **Supavisor pooler** (IPv4) from Supabase → Settings → Database →
+> *Connection pooling*:
+>
+> - `DATABASE_URL` = **Transaction** mode, port **6543**, and you MUST append
+>   `?pgbouncer=true&connection_limit=1` (Prisma + pgbouncer requirement, else
+>   writes fail with "prepared statement" errors):
+>   `postgresql://postgres.<ref>:<pwd>@aws-0-<region>.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1&sslmode=require`
+> - `DIRECT_URL` = **Session** mode, port **5432**:
+>   `postgresql://postgres.<ref>:<pwd>@aws-0-<region>.pooler.supabase.com:5432/postgres?sslmode=require`
 | `NEXT_PUBLIC_ABSTRACT_RPC` | ✅ | `https://api.mainnet.abs.xyz` |
 | `NEXT_PUBLIC_PET_RACING_ADDRESS` | ✅ | Gigaverse PetRacingSystem address |
 | `GIGAVERSE_API_BASE` | ✅ | `https://gigaverse.io/api/racing` |

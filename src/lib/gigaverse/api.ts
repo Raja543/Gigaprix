@@ -29,7 +29,11 @@ class GigaverseApiError extends Error {
   }
 }
 
-async function apiFetch<T>(path: string, retries = 2): Promise<T> {
+// Cap each Gigaverse call so a slow/unresponsive API can't hang a serverless
+// function past its timeout (which would surface as a 500 / error page).
+const API_TIMEOUT_MS = 6000;
+
+async function apiFetch<T>(path: string, retries = 1): Promise<T> {
   const url = `${API_BASE}${path}`;
   let lastError: unknown;
   for (let attempt = 0; attempt <= retries; attempt++) {
@@ -37,6 +41,7 @@ async function apiFetch<T>(path: string, retries = 2): Promise<T> {
       const res = await fetch(url, {
         headers: { Accept: "application/json" },
         next: { revalidate: 30 },
+        signal: AbortSignal.timeout(API_TIMEOUT_MS),
       });
       if (!res.ok) {
         throw new GigaverseApiError(`Gigaverse API ${res.status} for ${path}`, res.status);
@@ -203,6 +208,7 @@ async function fetchRacesRaw(path: string): Promise<RacesResponse["races"]> {
     const res = await fetch(`${API_BASE}${path}`, {
       headers: { Accept: "application/json" },
       cache: "no-store",
+      signal: AbortSignal.timeout(API_TIMEOUT_MS),
     });
     if (!res.ok) return [];
     const data = (await res.json()) as RacesResponse;

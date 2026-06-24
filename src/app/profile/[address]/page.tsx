@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ExternalLink, MessageCircle, AtSign } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { fetchPlayerGiglings } from "@/lib/gigaverse/api";
+import { captureError } from "@/lib/monitoring";
 import { normalizeAddress } from "@/lib/users";
 import { PlayerStats } from "@/components/profile/PlayerStats";
 import { ProfileEditor } from "@/components/profile/ProfileEditor";
@@ -24,16 +25,22 @@ export default async function ProfilePage({ params }: { params: Params }) {
   const wallet = normalizeAddress(decodeURIComponent(address));
   if (!/^0x[a-f0-9]{40}$/.test(wallet)) notFound();
 
-  const user = await prisma.user.findUnique({
-    where: { walletAddress: wallet },
-    include: {
-      participations: {
-        include: { tournament: { include: { host: true } } },
-        orderBy: { registeredAt: "desc" },
+  // Degrade gracefully if the DB is unreachable rather than crashing the page.
+  const user = await prisma.user
+    .findUnique({
+      where: { walletAddress: wallet },
+      include: {
+        participations: {
+          include: { tournament: { include: { host: true } } },
+          orderBy: { registeredAt: "desc" },
+        },
+        matchesWon: { select: { id: true } },
       },
-      matchesWon: { select: { id: true } },
-    },
-  });
+    })
+    .catch((err) => {
+      captureError(err, { page: "profile", wallet });
+      return null;
+    });
 
   const rawGiglings = await fetchPlayerGiglings(wallet).catch(() => []);
   const giglings: UIGigling[] = rawGiglings.map((g) => ({
