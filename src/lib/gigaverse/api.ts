@@ -30,17 +30,22 @@ class GigaverseApiError extends Error {
 }
 
 // Cap each Gigaverse call so a slow/unresponsive API can't hang a serverless
-// function past its timeout (which would surface as a 500 / error page).
-const API_TIMEOUT_MS = 6000;
+// function past its timeout (which would surface as a 500 / error page). Kept
+// tight because several pages block their render on these calls.
+const API_TIMEOUT_MS = 4000;
 
-async function apiFetch<T>(path: string, retries = 1): Promise<T> {
+async function apiFetch<T>(
+  path: string,
+  retries = 1,
+  revalidate = 30
+): Promise<T> {
   const url = `${API_BASE}${path}`;
   let lastError: unknown;
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const res = await fetch(url, {
         headers: { Accept: "application/json" },
-        next: { revalidate: 30 },
+        next: { revalidate },
         signal: AbortSignal.timeout(API_TIMEOUT_MS),
       });
       if (!res.ok) {
@@ -278,8 +283,12 @@ export async function fetchGiglingsByIds(
     return out;
   }
   try {
+    // Pet metadata (name, image, rarity, faction) is stable — cache 5 min so
+    // entrant lists don't re-fetch on every page view.
     const { pets } = await apiFetch<PetsResponse>(
-      `/pets?ids=${unique.slice(0, 100).join(",")}`
+      `/pets?ids=${unique.slice(0, 100).join(",")}`,
+      1,
+      300
     );
     for (const p of pets) {
       const rp = p.racePublic;

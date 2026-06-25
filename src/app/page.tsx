@@ -11,7 +11,10 @@ import { Card } from "@/components/ui/card";
 import { LiveIndicator } from "@/components/shared/LiveIndicator";
 import { displayName, formatNumber } from "@/lib/utils";
 
-export const dynamic = "force-dynamic";
+// ISR: serve a cached landing page and refresh in the background every 30s
+// instead of re-running every DB query + the Gigaverse stats call on every
+// request. Completed/new competitions still appear within 30s.
+export const revalidate = 30;
 
 async function getLandingData() {
   const cardInclude = {
