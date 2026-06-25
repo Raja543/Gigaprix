@@ -94,6 +94,21 @@ export async function joinTournamentAction(
   }
 }
 
+/**
+ * Heuristic: an obviously-synthetic test wallet (e.g. `0x0000…`, `0x1111…`, or
+ * `0xdead…`) that won't have Gigaverse race data — skip the slow ELO lookup for
+ * these so filling a test competition is fast.
+ */
+function isPlaceholderWallet(address: string): boolean {
+  const hex = address.toLowerCase().replace(/^0x/, "");
+  if (hex.length !== 40) return false;
+  // All-same-character (0x0000…, 0xffff…, 0x1111…) → clearly fake.
+  if (/^(.)\1{39}$/.test(hex)) return true;
+  // Mostly-zero padding with a short suffix (0x000…0001) → clearly fake.
+  if (/^0{30,}/.test(hex)) return true;
+  return false;
+}
+
 /** Host-only: bulk-register wallets (useful for filling a test tournament). */
 export async function addParticipantsAction(
   tournamentId: string,
@@ -113,39 +128,63 @@ export async function addParticipantsAction(
   });
   if (!tournament) return { ok: false, error: "Competition not found" };
 
-  let count = tournament._count.participants;
-  let added = 0;
+  const remaining = tournament.maxParticipants - tournament._count.participants;
   let skipped = 0;
 
-  // Bulk add directly (no auto-start) so the host stays in control of when the
-  // stages generate. De-dupes by wallet and respects the racer cap.
+  // Validate + de-dupe (within the input) up front, then respect the racer cap.
+  const seen = new Set<string>();
+  const valid: string[] = [];
   for (const raw of addresses) {
     const parsed = walletSchema.safeParse(raw.trim());
-    if (!parsed.success || count >= tournament.maxParticipants) {
+    if (!parsed.success) {
       skipped++;
       continue;
     }
-    try {
-      const user = await getOrCreateUser(parsed.data);
-      const exists = await prisma.participant.findFirst({
-        where: { tournamentId, userId: user.id },
-        select: { id: true },
-      });
-      if (exists) {
-        skipped++;
-        continue;
-      }
-      await prisma.participant.create({
-        data: { tournamentId, userId: user.id },
-      });
-      // Best-effort real ELO so seeding + lists are accurate.
-      await syncUserElo(user.id, parsed.data).catch(() => {});
-      added++;
-      count++;
-    } catch {
+    const wallet = parsed.data.toLowerCase();
+    if (seen.has(wallet)) {
       skipped++;
+      continue;
     }
+    seen.add(wallet);
+    if (valid.length >= remaining) {
+      skipped++;
+      continue;
+    }
+    valid.push(parsed.data);
   }
+
+  // Bulk add concurrently (no auto-start) so the host stays in control of when
+  // the stages generate. Each wallet: upsert user → skip if already a
+  // participant → create. The Gigaverse ELO sync is the slow part (a network
+  // call per wallet), so we (a) skip it for placeholder test wallets and (b) run
+  // every wallet in parallel instead of one-at-a-time.
+  const results = await Promise.all(
+    valid.map(async (address) => {
+      try {
+        const user = await getOrCreateUser(address);
+        const exists = await prisma.participant.findFirst({
+          where: { tournamentId, userId: user.id },
+          select: { id: true },
+        });
+        if (exists) return false;
+        await prisma.participant.create({
+          data: { tournamentId, userId: user.id },
+        });
+        // Best-effort real ELO so seeding + lists are accurate — but don't waste
+        // a 6s Gigaverse lookup on obvious placeholder/test wallets.
+        if (!isPlaceholderWallet(address)) {
+          await syncUserElo(user.id, address).catch(() => {});
+        }
+        return true;
+      } catch {
+        return null; // signal failure → counts as skipped
+      }
+    })
+  );
+
+  const added = results.filter((r) => r === true).length;
+  skipped += results.filter((r) => r !== true).length;
+
   revalidatePath(`/tournaments/${tournamentId}`);
   revalidatePath(`/tournaments/${tournamentId}/bracket`);
   return { ok: true, data: { added, skipped } };
