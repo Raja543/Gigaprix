@@ -51,6 +51,24 @@ npm run db:push        # sync schema to the prod DB (first deploy)
 - Confirm **DB backups / Point-in-Time Recovery** are enabled (Neon, Supabase, or
   whichever host). A bad reset is otherwise unrecoverable.
 
+### ⚡ Performance: put the functions next to the database
+The #1 cause of "every page is slow in prod but fast locally" is **region
+mismatch**. Each request makes several DB round-trips; if the functions and the
+DB are on different continents, that's ~200ms+ each, every click.
+
+- **Pin the Vercel function region to match the DB region.** Vercel → Settings →
+  *Functions* → **Function Region** → pick the one nearest your DB (e.g. Neon in
+  `ap-southeast-1` → choose **Singapore `sin1`**). Redeploy.
+- **Keep the DB warm.** Neon's free tier suspends after ~5 min idle (first hit
+  after = +1–2s). The included GitHub Action (`sync-races.yml`, ~5 min) pings the
+  cron endpoint, which queries the DB and keeps it awake — make sure it's enabled
+  with `SYNC_URL` + `CRON_SECRET` repo secrets.
+- **IPv4 requirement.** Vercel is IPv4-only. Supabase's *direct* host
+  (`db.<ref>.supabase.co`) has **no IPv4 (A) record at all** — it physically
+  can't connect from Vercel, regardless of pooler settings. Use Neon (IPv4 by
+  default) or Supabase's IPv4 pooler. The direct host works locally only because
+  home ISPs have IPv6.
+
 ## 3. Build
 ```bash
 npm run typecheck && npm run lint && npm run test && npm run build
